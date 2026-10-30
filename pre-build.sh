@@ -46,17 +46,35 @@ if old in text:
 state = root / "padavan-ng/trunk/user/www/n56u_ribbon_fixed/state.js"
 text = state.read_text(encoding="utf-8")
 
-marker = "// hide VPN server/client menus (patched)"
+marker = "// hide VPN/USB sidebar menus (patched)"
 if marker not in text:
     anchor = 'menuL1_icon = new Array("", "icon-home", "icon-hdd", "icon-retweet", "icon-globe", "icon-tasks", "icon-random", "icon-wrench");'
     if anchor not in text:
         raise SystemExit("Could not find the menu anchor in state.js")
     patch = (anchor + "\n\n" + marker + "\n"
+        + 'menuL1_link[2] = "";  //remove USB Applications (AiDisk)\n'
+        + 'menuL1_title[2] = "";\n'
         + 'menuL1_link[3] = "";  //remove VPN svr\n'
         + 'menuL1_title[3] = "";\n'
         + 'menuL1_link[4] = "";  //remove VPN cli\n'
         + 'menuL1_title[4] = "";\n')
     text = text.replace(anchor, patch, 1)
+
+# Hide all USB Applications sub-tabs: General Settings (index 1),
+# USB modem (index 4) and USB printer (index 5).
+usb_marker = "// hide USB application tabs (patched)"
+if usb_marker not in text:
+    usb_anchor = 'tablink[5] = new Array("", "Advanced_AiDisk_others.asp", "Advanced_AiDisk_samba.asp", "Advanced_AiDisk_ftp.asp", "Advanced_Modem_others.asp", "Advanced_Printer_others.asp");'
+    if usb_anchor not in text:
+        raise SystemExit("Could not find the USB tablink anchor in state.js")
+    usb_patch = (usb_anchor + "\n\n" + usb_marker + "\n"
+        + 'tabtitle[5][1] = "";  //remove General Settings\n'
+        + 'tablink[5][1] = "";\n'
+        + 'tabtitle[5][4] = "";  //remove USB modem\n'
+        + 'tablink[5][4] = "";\n'
+        + 'tabtitle[5][5] = "";  //remove USB printer\n'
+        + 'tablink[5][5] = "";\n')
+    text = text.replace(usb_anchor, usb_patch, 1)
 
 # Trim the git commit suffix from the version shown in the top bar,
 # e.g. 3.4.4.0-105_007433a -> 3.4.4.0-105
@@ -76,6 +94,18 @@ elif foot_new not in text:
     raise SystemExit("Could not find the footer line in state.js")
 
 state.write_text(text, encoding="utf-8", newline="\n")
+
+# Disable USB 3.0 by default (reduces 2.4GHz Wi-Fi interference on MI-R3G).
+# Users can still re-enable it in the WebUI; this only flips the nvram default.
+defaults = root / "padavan-ng/trunk/user/shared/defaults.c"
+text = defaults.read_text(encoding="utf-8")
+usb3_old = '{ "usb3_disable", "0" },'
+usb3_new = '{ "usb3_disable", "1" },'
+if usb3_old in text:
+    text = text.replace(usb3_old, usb3_new, 1)
+    defaults.write_text(text, encoding="utf-8", newline="\n")
+elif usb3_new not in text:
+    raise SystemExit("Could not find the usb3_disable default in defaults.c")
 PY
 
 # Ensure the device config enables the Chinese resource even if it was not edited manually.
