@@ -39,6 +39,43 @@ old = "for l in BR DA EN ES FR PL SV CZ DE EN FI NO RU UK; do"
 new = "for l in BR DA EN ES FR PL SV CZ DE EN FI NO RU UK CN; do"
 if old in text:
     creator.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+
+# Hide the VPN Server / VPN Client entries in the WebUI sidebar.
+# The renderer skips any menuL1 item whose title is empty (same trick
+# the firmware itself uses in AP mode), so blanking title+link is enough.
+state = root / "padavan-ng/trunk/user/www/n56u_ribbon_fixed/state.js"
+text = state.read_text(encoding="utf-8")
+
+marker = "// hide VPN server/client menus (patched)"
+if marker not in text:
+    anchor = 'menuL1_icon = new Array("", "icon-home", "icon-hdd", "icon-retweet", "icon-globe", "icon-tasks", "icon-random", "icon-wrench");'
+    if anchor not in text:
+        raise SystemExit("Could not find the menu anchor in state.js")
+    patch = (anchor + "\n\n" + marker + "\n"
+        + 'menuL1_link[3] = "";  //remove VPN svr\n'
+        + 'menuL1_title[3] = "";\n'
+        + 'menuL1_link[4] = "";  //remove VPN cli\n'
+        + 'menuL1_title[4] = "";\n')
+    text = text.replace(anchor, patch, 1)
+
+# Trim the git commit suffix from the version shown in the top bar,
+# e.g. 3.4.4.0-105_007433a -> 3.4.4.0-105
+ver_old = '''showtext($("firmver"), '<% nvram_get_x("",  "firmver_sub"); %>');'''
+ver_new = '''showtext($("firmver"), '<% nvram_get_x("",  "firmver_sub"); %>'.split('_')[0]);'''
+if ver_old in text:
+    text = text.replace(ver_old, ver_new, 1)
+elif ver_new not in text:
+    raise SystemExit("Could not find the firmware version line in state.js")
+
+# Remove the page footer (copyright / Highcharts / Freepik / Non-Commercial).
+foot_old = '\t$("footer").innerHTML = footer_code;'
+foot_new = '\t$("footer").innerHTML = ""; // footer hidden (patched)'
+if foot_old in text:
+    text = text.replace(foot_old, foot_new, 1)
+elif foot_new not in text:
+    raise SystemExit("Could not find the footer line in state.js")
+
+state.write_text(text, encoding="utf-8", newline="\n")
 PY
 
 # Ensure the device config enables the Chinese resource even if it was not edited manually.
